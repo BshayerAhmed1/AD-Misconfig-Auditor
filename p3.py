@@ -9,7 +9,6 @@ except ImportError:
     WINDOWS_API_AVAILABLE = False
 
 def fetch_live_mitre_data():
-    """سحب قاعدة بيانات مايتر المحدثة"""
     print("[*] Connecting to MITRE ATT&CK Enterprise Repository...")
     mitre_url = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
     try:
@@ -22,7 +21,6 @@ def fetch_live_mitre_data():
     return None
 
 def clean_mitre_description(raw_desc):
-    """تنظيف النص وإزالة روابط المارك داون المقطوعة"""
     if not raw_desc:
         return "No description available."
     clean_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', raw_desc)
@@ -45,7 +43,6 @@ def extract_mitre_details(mitre_data, technique_id):
     return "Unknown Technique", "Details not found in current MITRE matrix."
 
 def build_json_sid_map(users_list):
-    """بناء خريطة ترجمة حية لجميع معرفات SIDs من ملف JSON"""
     sid_map = {}
     for user in users_list:
         props = user.get("Properties", {})
@@ -82,13 +79,11 @@ def resolve_sid_hybrid(sid_string, local_sid_map):
 def generate_interactive_dashboard(findings, output_html_path="AD_Security_Audit_Report.html"):
     print(f"[*] Generating Interactive Dashboard Report: {output_html_path}...")
 
-    # حساب الإحصائيات الذكية
     total_vulns = len(findings)
     critical_count = sum(1 for f in findings if f.get('Severity') == 'CRITICAL')
     high_count = sum(1 for f in findings if f.get('Severity') == 'HIGH')
     medium_count = sum(1 for f in findings if f.get('Severity') == 'MEDIUM')
 
-    # بناء صفوف الجدول
     table_rows = ""
     for idx, item in enumerate(findings, 1):
         sev = item['Severity'].upper()
@@ -242,7 +237,6 @@ def generate_interactive_dashboard(findings, output_html_path="AD_Security_Audit
             font-size: 11px;
         }}
 
-        /* Print Media Styles (تنسيق الصفحة عند تحويلها لـ PDF) */
         @media print {{
             body {{
                 background-color: #ffffff !important;
@@ -357,12 +351,11 @@ def analyze_ad_with_live_mitre(file_path):
             is_enabled = user_properties.get("enabled", True)
             aces = user.get("Aces", [])
             
-            # تصفية الحسابات المعطلة
             if not is_enabled:
                 continue
 
             # -------------------------------------------------------------------------
-            # 1. فحص إعدادات الحساب (Account Properties)
+            # 1. (Account Properties)
             # -------------------------------------------------------------------------
             if user_properties.get("dontreqpreauth") is True:
                 tech_id = "T1558.004"
@@ -417,19 +410,17 @@ def analyze_ad_with_live_mitre(file_path):
                 })
 
             # -------------------------------------------------------------------------
-            # 2. فحص صلاحيات الوصول ACLs (Aces) مع تصفية الصلاحيات الموروثة
+            # 2. ACLs (Aces) 
             # -------------------------------------------------------------------------
             for ace in aces:
                 right_name = ace.get("RightName")
                 principal_sid = ace.get("PrincipalSID", "")
                 is_inherited = ace.get("IsInherited", False)
                 
-                # استبعاد الصلاحيات الموروثة لمنع الـ False Positives
                 if is_inherited:
                     continue
                 
                 if right_name in RIGHTS_CONFIG:
-                    # استبعاد المجموعات الإدارية المتميزة افتراضياً
                     if (principal_sid.endswith("-512") or 
                         principal_sid.endswith("-519") or 
                         "S-1-5-32-544" in principal_sid or 
@@ -454,7 +445,6 @@ def analyze_ad_with_live_mitre(file_path):
                     
         print(f"[+] Complete! Processed {len(findings)} high-value active vulnerabilities.")
         
-        # استدعاء دالة الـ Dashboard بدلاً من الـ PDF القديمة
         generate_interactive_dashboard(findings)
         
     except FileNotFoundError:
@@ -462,5 +452,4 @@ def analyze_ad_with_live_mitre(file_path):
     except json.JSONDecodeError:
         print("[-] Error: Invalid JSON format.")
 
-# التشغيل
 analyze_ad_with_live_mitre("users.json")
